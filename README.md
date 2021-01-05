@@ -1,4 +1,4 @@
-# PRC_awprot
+# MASTER_THESIS
 This project contains a Source folder and 3 tickle files, create.tcl, synth_module.tcl and gen_bitstream.tcl
 The Source folder contains, sub folders App, ip_repo, reconfig_modules, rModule_leds, Static, xdc
 
