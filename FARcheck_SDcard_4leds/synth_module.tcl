@@ -1,7 +1,7 @@
 # set_param general.maxThreads 24
 # Set the working directory path to below mentioned path
 
-cd C:/projects/awprot_lite_burst_hardware/
+cd C:/projects/prc_usp_axi_burst/awprot_working/
 
  ######################################
   #Generating the dcp  for each RM

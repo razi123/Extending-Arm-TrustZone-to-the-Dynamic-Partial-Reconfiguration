@@ -1,23 +1,3 @@
-/**************************************************************************
-*
-*     XILINX IS PROVIDING THIS DESIGN, CODE, OR INFORMATION "AS IS"
-*     SOLELY FOR USE IN DEVELOPING PROGRAMS AND SOLUTIONS FOR
-*     XILINX DEVICES.  BY PROVIDING THIS DESIGN, CODE, OR INFORMATION
-*     AS ONE POSSIBLE IMPLEMENTATION OF THIS FEATURE, APPLICATION
-*     OR STANDARD, XILINX IS MAKING NO REPRESENTATION THAT THIS
-*     IMPLEMENTATION IS FREE FROM ANY CLAIMS OF INFRINGEMENT,
-*     AND YOU ARE RESPONSIBLE FOR OBTAINING ANY RIGHTS YOU MAY REQUIRE
-*     FOR YOUR IMPLEMENTATION.  XILINX EXPRESSLY DISCLAIMS ANY
-*     WARRANTY WHATSOEVER WITH RESPECT TO THE ADEQUACY OF THE
-*     IMPLEMENTATION, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OR
-*     REPRESENTATIONS THAT THIS IMPLEMENTATION IS FREE FROM CLAIMS OF
-*     INFRINGEMENT, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-*     FOR A PARTICULAR PURPOSE.
-*
-*     (c) Copyright 2010 Xilinx, Inc.
-*     All rights reserved.
-*
-**************************************************************************/
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -158,11 +138,66 @@ int SD_Init()
 	return XST_SUCCESS;
 }
 
+
+int FAR_Check(int *DDRstart, u32 ByteLength){
+	FIL fil;
+	FRESULT rc;
+	UINT br;
+	u32 file_size;
+	u32 count = 0;
+	u32 FAR_found =0;
+
+/*	for (u32 i=0; i<100; i++)
+		{
+			xil_printf("Bitstream HEX = %x \r\n",*(DDRstart+i));
+		}
+*/
+
+
+	for (u32 i=0; i<(ByteLength>>2); i++)
+	{
+		if(*(DDRstart+i) == 0x30002001)
+		{
+			count++;
+
+			if(*(DDRstart+i+1) == 0x47900)
+			{
+				xil_printf("Line=%d and FAR Hex = %x \r\n",(count/4), *(DDRstart+i+1));
+				FAR_found = 1;
+				break;
+			}
+
+	    }else{
+	    	count++;
+	    	FAR_found = 0;
+
+	    }
+	}
+
+
+	xil_printf("*******DDR Done*********\r\n");
+
+	if(FAR_found)
+	{
+		return XST_SUCCESS;
+	}else{
+		xil_printf("FAR not found....... \r\n");
+		return XST_FAILURE;
+	}
+
+
+return XST_SUCCESS;
+}
+
+
+
 int SD_TransferPartial(char *FileName, u32 DestinationAddress, u32 ByteLength)
 {
 	FIL fil;
 	FRESULT rc;
 	UINT br;
+	uint BS_err_flag=0;
+	u32 BS_address;
 
 	rc = f_open(&fil, FileName, FA_READ);
 	if (rc) {
@@ -182,14 +217,39 @@ int SD_TransferPartial(char *FileName, u32 DestinationAddress, u32 ByteLength)
 		return XST_FAILURE;
 	}
 
+	switch(DestinationAddress){
+
+	case 0x05000000 : BS_address = 83886080; break;
+	case 0x06000000 : BS_address = 100663296; break;
+	case 0x07000000 : BS_address = 117440512; break;
+	default: xil_printf("No BS_address\r\n"); break;
+
+	}
+	// Read Bitstream from the DDR RAM memeory
+	rc = FAR_Check(BS_address, ByteLength);
+	if(rc){
+
+		xil_printf("Error : FAR_Check %d\r\n", rc);
+		BS_err_flag = 1;
+	}
+
+
 	rc = f_close(&fil);
 	if (rc) {
 		xil_printf(" ERROR : f_close returned %d\r\n", rc);
 		return XST_FAILURE;
 	}
 
-	return XST_SUCCESS;
+	if(BS_err_flag){
+		return XST_FAILURE;
+	}else{
+
+		return XST_SUCCESS;
+	}
+
 }
+
+
 
 int SD_TransferPartial_rev(char *FileName, u32 DestinationAddress, u32 ByteLength)
 {
@@ -340,7 +400,6 @@ int main()
 		return XST_FAILURE;
 	}
 
-
 	Status = SD_TransferPartial("left.bin", PARTIAL_LEFT_ADDR, (PARTIAL_LEFT_BITFILE_LEN << 2));
 	if (Status != XST_SUCCESS ) {
 		print("Error: Unable to open left.bin from SD card.\r\n");
@@ -379,45 +438,6 @@ int main()
 	// Enable ICAP
 	Xil_Out32(CSU_PCAP_RESET, (u32) 0x1);
 	Xil_Out32(CSU_PCAP_CTRL , (u32) 0x0);
-
-/*
- * Please delete XOR perform error checking here otherwise this is useless...
-	print("Reading RM bitstreams address and size registers for Math and Shift RMs\r\n");
-	xil_printf("Adder RM address = %x\r\n",Xil_In32(rp_math_BS_ADDRESS0));
-	xil_printf("Mult RM address = %x\r\n",Xil_In32(rp_math_BS_ADDRESS1));
-	xil_printf("Math Blank RM address = %x\r\n",Xil_In32(rp_math_BS_ADDRESS2));
-	xil_printf("Adder RM size = %x\r\n",Xil_In32(rp_math_BS_SIZE0));
-	xil_printf("Mult RM size = %x\r\n",Xil_In32(rp_math_BS_SIZE1));
-	xil_printf("Math Blank RM size = %x\r\n",Xil_In32(rp_math_BS_SIZE2));
-
-	xil_printf("Left Shift RM address = %x\r\n",Xil_In32(rp_shift_BS_ADDRESS0));
-	xil_printf("Right Shift RM address = %x\r\n",Xil_In32(rp_shift_BS_ADDRESS1));
-	xil_printf("Shift Blank RM address = %x\r\n",Xil_In32(rp_shift_BS_ADDRESS2));
-	xil_printf("Left Shift RM size = %x\r\n",Xil_In32(rp_shift_BS_SIZE0));
-	xil_printf("Right Shift RM size = %x\r\n",Xil_In32(rp_shift_BS_SIZE1));
-	xil_printf("Shift Blank RM size = %x\r\n",Xil_In32(rp_shift_BS_SIZE2));
-
-	print("Reading RM Trigger and address registers for Math and Shift RMs\r\n");
-	xil_printf("Adder RM Trigger0 = %x\r\n",Xil_In32(rp_math_TRIGGER0));
-	xil_printf("Mult RM Trigger1 = %x\r\n",Xil_In32(rp_math_TRIGGER1));
-	xil_printf("Math Blank RM Trigger2 = %x\r\n",Xil_In32(rp_math_TRIGGER2));
-	xil_printf("Adder RM Address0 = %x\r\n",Xil_In32(rp_math_RM_ADDRESS0));
-	xil_printf("Mult RM Address1 = %x\r\n",Xil_In32(rp_math_RM_ADDRESS1));
-	xil_printf("Math Blank RM Address2 = %x\r\n",Xil_In32(rp_math_RM_ADDRESS2));
-
-	xil_printf("Left RM Trigger0 = %x\r\n",Xil_In32(rp_shift_TRIGGER0));
-	xil_printf("RIght RM Trigger1 = %x\r\n",Xil_In32(rp_shift_TRIGGER1));
-	xil_printf("Shift Blank RM Trigger2 = %x\r\n",Xil_In32(rp_shift_TRIGGER2));
-	xil_printf("Left RM Address0 = %x\r\n",Xil_In32(rp_shift_RM_ADDRESS0));
-	xil_printf("Right RM Address1 = %x\r\n",Xil_In32(rp_shift_RM_ADDRESS1));
-	xil_printf("Shift Blank RM Address2 = %x\r\n",Xil_In32(rp_shift_RM_ADDRESS2));
-	print("Putting the PRC core's Math RP in Restart with Status mode\r\n");
-	YUP Xil_Out32(rp_math_CONTROL,2);
-	print("Putting the PRC core's SHIFT RP in Restart with Status mode\r\n");
-	YUP Xil_Out32(rp_shift_CONTROL,2);
-	xil_printf("Reading the Math RP status=%x\r\n",Xil_In32(rp_math_STATUS));
-	xil_printf("Reading the SHIFT RP status=%x\r\n",Xil_In32(rp_shift_STATUS));
-*/
 
 	// Display Menu
     int OptionNext = 1; // start-up default

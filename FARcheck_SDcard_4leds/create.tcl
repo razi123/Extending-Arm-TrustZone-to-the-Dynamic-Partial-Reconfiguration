@@ -3,7 +3,7 @@
  ####################################
 set_param general.maxThreads 24
 
-cd C:/projects/awprot_lite_burst_hardware
+cd C:/projects/prc_usp_axi_burst/awprot_working/
 set prj_local prj
 create_project $prj_local ./$prj_local -part xczu9eg-ffvb1156-2-e
 set_property board_part xilinx.com:zcu102:part0:3.2 [current_project]
@@ -24,8 +24,6 @@ set_property -dict [list CONFIG.PSU__USE__M_AXI_GP1 {0} CONFIG.PSU__USE__S_AXI_G
 create_bd_cell -type ip -vlnv xilinx.com:ip:axi_interconnect:2.1 axi_interconnect_0
 set_property -dict [list CONFIG.NUM_MI {1}] [get_bd_cells axi_interconnect_0]
 connect_bd_intf_net -boundary_type upper [get_bd_intf_pins axi_interconnect_0/M00_AXI] [get_bd_intf_pins zynq_ultra_ps_e_0/S_AXI_HP0_FPD]
-set_property -dict [list CONFIG.NUM_SI {2} CONFIG.NUM_MI {1}] [get_bd_cells axi_interconnect_0]
-
 
 
 # Create PRC on ultrascale+ board
@@ -57,21 +55,17 @@ create_bd_port -dir O pl_resetn0
 connect_bd_net [get_bd_ports pl_resetn0] [get_bd_pins zynq_ultra_ps_e_0/pl_resetn0]
 
 #awprot
-add_files -norecurse C:/projects/awprot_lite_burst_hardware/Sources/Static/awprot.vhd
+add_files -norecurse C:/projects/prc_usp_axi_burst/awprot_working/Sources/Static/awprot.vhd
 update_compile_order -fileset sources_1
 create_bd_cell -type module -reference awprot awprot_0
 
 connect_bd_net [get_bd_pins awprot_0/aclk_0] [get_bd_pins axi_interconnect_0/ACLK]
 connect_bd_net [get_bd_pins axi_interconnect_0/ARESETN] [get_bd_pins awprot_0/aresetn_0]
 connect_bd_intf_net [get_bd_intf_pins awprot_0/M00_axi_0] [get_bd_intf_pins prc_0/s_axi_reg]
-connect_bd_intf_net -boundary_type upper [get_bd_intf_pins axi_interconnect_0/S01_AXI] [get_bd_intf_pins awprot_0/M01_AXI]
-
 
 set_property -dict [list CONFIG.FREQ_HZ {99990005}] [get_bd_intf_pins awprot_0/S00_AXI_REG_0]
 set_property -dict [list CONFIG.FREQ_HZ {99990005}] [get_bd_intf_pins awprot_0/M00_axi_0]
-set_property -dict [list CONFIG.FREQ_HZ {99990005}] [get_bd_intf_pins awprot_0/M00_axi_0]
-set_property -dict [list CONFIG.FREQ_HZ {99990005}] [get_bd_intf_pins awprot_0/M01_AXI]
-set_property -dict [list CONFIG.FREQ_HZ {99990005}] [get_bd_intf_pins awprot_0/S00_AXI_REG_0]
+
 
 
 # Run Connection Automation
@@ -81,16 +75,8 @@ apply_bd_automation -rule xilinx.com:bd_rule:clkrst -config {Clk "/zynq_ultra_ps
 apply_bd_automation -rule xilinx.com:bd_rule:clkrst -config {Clk "/zynq_ultra_ps_e_0/pl_clk0 (99 MHz)" }  [get_bd_pins axi_interconnect_0/S00_ACLK]
 apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { Clk_master {/zynq_ultra_ps_e_0/pl_clk0 (99 MHz)} Clk_slave {Auto} Clk_xbar {/zynq_ultra_ps_e_0/pl_clk0 (99 MHz)} Master {/zynq_ultra_ps_e_0/M_AXI_HPM0_FPD} Slave {/awprot_0/S00_AXI_REG_0} intc_ip {/ps8_0_axi_periph} master_apm {0}}  [get_bd_intf_pins awprot_0/S00_AXI_REG_0]
 set_property -dict [list CONFIG.ENABLE_ADVANCED_OPTIONS {1} CONFIG.M00_SECURE {1}] [get_bd_cells ps8_0_axi_periph]
-
-apply_bd_automation -rule xilinx.com:bd_rule:clkrst -config {Clk "/zynq_ultra_ps_e_0/pl_clk0 (99 MHz)" }  [get_bd_pins axi_interconnect_0/S01_ACLK]
-
-# Auto assign address for awprot and ddr
-assign_bd_address [get_bd_addr_segs {zynq_ultra_ps_e_0/SAXIGP2/HP0_DDR_LOW }]
-assign_bd_address
-
-# Validate the design
-validate_bd_design
 save_bd_design
+
 regenerate_bd_layout
 update_compile_order -fileset sources_1
 

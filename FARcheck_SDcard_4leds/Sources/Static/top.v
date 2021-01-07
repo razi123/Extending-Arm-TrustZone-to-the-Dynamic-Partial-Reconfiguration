@@ -10,12 +10,12 @@
 `timescale 1 ps / 1 ps
 
 module top
-   (led);
-    //button_u,   // left_shift_trigger - trigger 0
-    //button_d);  // right_shift_trigger
+   (led,
+    button_u,   // left_shift_trigger - trigger 0
+    button_d);  // right_shift_trigger
 	
-  //input button_u;
-  //input button_d;
+  input button_u;
+  input button_d;
   output [3:0] led;
   
   wire pl_clk0;
